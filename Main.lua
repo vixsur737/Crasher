@@ -1,7 +1,7 @@
 -- Ultra Simple Whitelist System
 -- Эта версия точно должна работать
 
-local WhitelistURL = "https://pastebin.com/raw/xxxxxxxx" -- ВАШ ВАЙТ-ЛИСТ
+local WhitelistURL = "https://github.com/vixsur737/Crasher/blob/main/Whitelist.txt" -- ВАШ ВАЙТ-ЛИСТ
 
 -- Функция для красивого кика
 function KickPlayer(reason)
