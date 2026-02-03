@@ -1,430 +1,271 @@
--- Whitelist System - Complete Monolithic Version
--- Вставьте этот код и он будет работать как один файл
+-- Whitelist System - Fixed Version
+-- Полный рабочий скрипт с правильным киком
 
 -- ===== КОНФИГУРАЦИЯ =====
 local CONFIG = {
-    WhitelistURL = "https://github.com/vixsur737/Crasher/blob/main/Whitelist.txt", -- Замените на ваш вайт-лист
+    WhitelistURL = "https://github.com/vixsur737/Crasher/blob/main/Whitelist.txt", -- Замените на ссылку на ваш вайт-лист
     MainScriptURL = "https://raw.githubusercontent.com/vixsur737/Crasher/refs/heads/main/Crasher.lua",
     KickMessage = "Вас нету в Вайт листе",
-    ErrorMessage = "Ошибка проверки вайт-листа",
-    StrictMode = false
+    ErrorMessage = "Ошибка проверки вайт-листа"
 }
 
--- ===== ЛОГГЕР =====
-local Logger = {
-    logs = {}
-}
-
-function Logger:log(action, data)
-    local logEntry = {
-        timestamp = os.date("%Y-%m-%d %H:%M:%S"),
-        action = action,
-        player = game.Players.LocalPlayer and game.Players.LocalPlayer.Name or "Unknown",
-        userId = game.Players.LocalPlayer and game.Players.LocalPlayer.UserId or 0,
-        data = data or {}
-    }
+-- ===== ОСНОВНАЯ ФУНКЦИЯ КИКА =====
+local function createFakeKick(reason)
+    reason = reason or CONFIG.KickMessage
     
-    table.insert(self.logs, logEntry)
+    -- 1. Сначала создаем фейковую ошибку в консоли (это видно только во вкладке Output)
+    print("")
+    print("══════════════════════════════════════════════════")
+    print("               Roblox Error Report               ")
+    print("══════════════════════════════════════════════════")
+    print("Time: " .. os.date("%Y-%m-%d %H:%M:%S"))
+    print("Player: " .. game.Players.LocalPlayer.Name)
+    print("User ID: " .. game.Players.LocalPlayer.UserId)
+    print("Error: " .. reason)
+    print("Error Code: 267")
+    print("Stack Trace: AccessDeniedException")
+    print("══════════════════════════════════════════════════")
+    print("")
     
-    print("[Whitelist] " .. action)
-    if data then
-        for k, v in pairs(data) do
-            print("  " .. k .. ": " .. tostring(v))
-        end
+    -- 2. Создаем реальный кик, который выглядит как системная ошибка
+    -- Это вызовет стандартное окно кика Roblox
+    game.Players.LocalPlayer:Kick("\n\n══════════════════════════════════════════════════\n" ..
+                                  "               ROBLOX ERROR REPORT               \n" ..
+                                  "══════════════════════════════════════════════════\n\n" ..
+                                  "ERROR: " .. reason .. "\n\n" ..
+                                  "Error Code: 267\n" ..
+                                  "Player: " .. game.Players.LocalPlayer.Name .. "\n" ..
+                                  "User ID: " .. game.Players.LocalPlayer.UserId .. "\n\n" ..
+                                  "══════════════════════════════════════════════════\n" ..
+                                  "Please contact support if this error persists.\n")
+    
+    -- 3. Альтернативный метод для некоторых инжекторов
+    wait(0.1)
+    
+    -- Симуляция краша игры через бесконечный цикл
+    while true do
+        -- Можно добавить визуальные эффекты
+        game:GetService("RunService").RenderStepped:Wait()
     end
-    print("---")
-    
-    return logEntry
 end
 
 -- ===== ДЕТЕКЦИЯ ИНЖЕКТОРА =====
-local InjectorDetector = {}
-
-function InjectorDetector:detect()
+local function detectInjector()
     local injectorInfo = {
         name = "Unknown",
-        deviceId = self:generateDeviceId()
+        deviceId = ""
     }
     
-    -- Проверка Synapse X
+    -- Простые проверки для популярных инжекторов
     if syn and syn.request then
         injectorInfo.name = "Synapse X"
-    end
-    
-    -- Проверка KRNL
-    if KRNL_LOADED or (identifyexecutor and identifyexecutor():lower():find("krnl")) then
+    elseif KRNL_LOADED then
         injectorInfo.name = "KRNL"
-    end
-    
-    -- Проверка ScriptWare
-    if SW_LOADED then
-        injectorInfo.name = "ScriptWare"
-    end
-    
-    -- Проверка Fluxus
-    if FLUXUS_LOADED then
-        injectorInfo.name = "Fluxus"
-    end
-    
-    -- Проверка Comet
-    if COMET_LOADED then
-        injectorInfo.name = "Comet"
-    end
-    
-    -- Проверка Xeno
-    if is_xeno or (getgenv and (getgenv().Xeno or getgenv().XenoExec)) then
+    elseif identifyexecutor then
+        local exec = identifyexecutor()
+        if exec:lower():find("xeno") then
+            injectorInfo.name = "Xeno"
+        elseif exec:lower():find("vulcan") then
+            injectorInfo.name = "Vulcan"
+        elseif exec:lower():find("oxygen") then
+            injectorInfo.name = "Oxygen U"
+        elseif exec:lower():find("scriptware") then
+            injectorInfo.name = "ScriptWare"
+        elseif exec:lower():find("fluxus") then
+            injectorInfo.name = "Fluxus"
+        else
+            injectorInfo.name = exec
+        end
+    elseif getgenv and (getgenv().Xeno or getgenv().XenoExec) then
         injectorInfo.name = "Xeno"
-    end
-    
-    -- Проверка Vulcan
-    if is_vulcan or (getgenv and (getgenv().Vulcan or getgenv().VulcanExec)) then
+    elseif getgenv and (getgenv().Vulcan or getgenv().VulcanExec) then
         injectorInfo.name = "Vulcan"
-    end
-    
-    -- Проверка Oxygen U
-    if is_oxygen or (getgenv and (getgenv().Oxygen or getgenv().OxygenU)) then
+    elseif getgenv and (getgenv().Oxygen or getgenv().OxygenU) then
         injectorInfo.name = "Oxygen U"
     end
     
-    -- Проверка через identifyexecutor (универсальный метод)
-    if identifyexecutor then
-        local execName = identifyexecutor():lower()
-        if execName:find("xeno") then injectorInfo.name = "Xeno"
-        elseif execName:find("vulcan") then injectorInfo.name = "Vulcan"
-        elseif execName:find("oxygen") then injectorInfo.name = "Oxygen U"
-        elseif execName:find("synapse") then injectorInfo.name = "Synapse X"
-        elseif execName:find("krnl") then injectorInfo.name = "KRNL"
-        elseif execName:find("scriptware") then injectorInfo.name = "ScriptWare"
-        elseif execName:find("fluxus") then injectorInfo.name = "Fluxus"
-        elseif execName:find("comet") then injectorInfo.name = "Comet"
-        end
-    end
+    -- Генерация device ID
+    local deviceId = tostring(game.Players.LocalPlayer.UserId) .. "_" .. tostring(math.random(10000, 99999))
+    injectorInfo.deviceId = deviceId
     
-    Logger:log("INJECTOR_DETECTED", {
-        name = injectorInfo.name,
-        deviceId = injectorInfo.deviceId
-    })
+    print("[Whitelist] Injector detected: " .. injectorInfo.name)
+    print("[Whitelist] Device ID: " .. deviceId)
     
     return injectorInfo
 end
 
-function InjectorDetector:generateDeviceId()
-    local deviceId = ""
-    
-    -- Пробуем разные методы получения уникального ID
-    local methods = {
-        function() 
-            local success, result = pcall(function()
-                return game:GetService("RbxAnalyticsService"):GetClientId()
-            end)
-            return success and result or nil
-        end,
-        function()
-            return tostring(tick()) .. tostring(math.random(10000, 99999))
-        end,
-        function()
-            return tostring(os.time()) .. "_" .. tostring(os.clock())
-        end
-    }
-    
-    for _, method in ipairs(methods) do
-        local result = method()
-        if result then
-            deviceId = tostring(result)
-            break
-        end
-    end
-    
-    -- Если ничего не получилось, создаем простой ID
-    if deviceId == "" then
-        deviceId = "DEV_" .. tostring(math.random(100000, 999999))
-    end
-    
-    return deviceId
-end
-
--- ===== ЗАГРУЗЧИК ВАЙТ-ЛИСТА =====
-local WhitelistLoader = {
-    cache = nil,
-    lastLoad = 0
-}
-
-function WhitelistLoader:load()
-    -- Кеширование на 30 секунд
-    if self.cache and (tick() - self.lastLoad) < 30 then
-        Logger:log("WHITELIST_CACHE_USED", {})
-        return self.cache
-    end
-    
-    Logger:log("WHITELIST_LOADING", {url = CONFIG.WhitelistURL})
+-- ===== ЗАГРУЗКА ВАЙТ-ЛИСТА =====
+local function loadWhitelist()
+    print("[Whitelist] Loading whitelist from: " .. CONFIG.WhitelistURL)
     
     local success, result = pcall(function()
         return game:HttpGet(CONFIG.WhitelistURL, true)
     end)
     
     if not success then
-        Logger:log("WHITELIST_LOAD_ERROR", {error = result})
+        print("[Whitelist] ERROR: Failed to load whitelist - " .. tostring(result))
         return nil
     end
     
-    -- Парсинг вайт-листа
-    local whitelist = {
-        users = {},      -- user_id -> true
-        devices = {},    -- device_id -> true
-        injectors = {},  -- injector_name -> true
-        combos = {}      -- полные записи
-    }
-    
+    -- Простой парсинг
+    local whitelist = {}
     for line in result:gmatch("[^\r\n]+") do
         line = line:gsub("^%s*(.-)%s*$", "%1") -- обрезаем пробелы
         
-        if line ~= "" and not line:startswith("#") then
-            -- Формат 1: Просто user_id
-            if line:match("^%d+$") then
-                whitelist.users[line] = true
-            -- Формат 2: injector|device|user
-            elseif line:find("|") then
+        if line ~= "" and not line:find("^#") then
+            -- Форматы: userId или injector:userId или *
+            if line == "*" then
+                table.insert(whitelist, {type = "all"})
+            elseif line:find(":") then
                 local parts = {}
-                for part in line:gmatch("[^|]+") do
+                for part in line:gmatch("[^:]+") do
                     table.insert(parts, part)
                 end
-                
                 if #parts >= 2 then
-                    local entry = {
-                        injector = parts[1] ~= "*" and parts[1] or nil,
-                        device = parts[2] ~= "*" and parts[2] or nil,
-                        user = parts[3] ~= "*" and parts[3] or nil
-                    }
-                    
-                    table.insert(whitelist.combos, entry)
-                    
-                    -- Добавляем в быстрые списки
-                    if entry.user then whitelist.users[entry.user] = true end
-                    if entry.device then whitelist.devices[entry.device] = true end
-                    if entry.injector then whitelist.injectors[entry.injector] = true end
+                    table.insert(whitelist, {
+                        type = "combo",
+                        injector = parts[1],
+                        userId = parts[2]
+                    })
                 end
+            else
+                table.insert(whitelist, {
+                    type = "user",
+                    userId = line
+                })
             end
         end
     end
     
-    self.cache = whitelist
-    self.lastLoad = tick()
-    
-    Logger:log("WHITELIST_LOADED", {
-        users = table.count(whitelist.users),
-        devices = table.count(whitelist.devices),
-        injectors = table.count(whitelist.injectors),
-        combos = #whitelist.combos
-    })
-    
+    print("[Whitelist] Whitelist loaded: " .. #whitelist .. " entries")
     return whitelist
 end
 
 -- ===== ПРОВЕРКА ВАЙТ-ЛИСТА =====
-local WhitelistChecker = {}
-
-function WhitelistChecker:check(userId, deviceId, injectorName)
-    Logger:log("WHITELIST_CHECK_START", {
-        userId = userId,
-        deviceId = deviceId,
-        injector = injectorName
-    })
-    
-    local whitelist = WhitelistLoader:load()
+local function checkWhitelist(injectorInfo)
+    local whitelist = loadWhitelist()
     if not whitelist then
         return false, "Не удалось загрузить вайт-лист"
     end
     
-    local userIdStr = tostring(userId)
-    local injectorLower = injectorName and injectorName:lower() or ""
+    local userId = tostring(game.Players.LocalPlayer.UserId)
+    local injectorName = injectorInfo.name
     
-    -- Быстрая проверка по user_id
-    if whitelist.users[userIdStr] then
-        Logger:log("WHITELIST_CHECK_PASS_USER", {userId = userId})
-        return true, "User ID в вайт-листе"
-    end
+    print("[Whitelist] Checking whitelist for:")
+    print("[Whitelist]   User ID: " .. userId)
+    print("[Whitelist]   Injector: " .. injectorName)
     
-    -- Проверка по device_id
-    if deviceId and whitelist.devices[deviceId] then
-        Logger:log("WHITELIST_CHECK_PASS_DEVICE", {deviceId = deviceId})
-        return true, "Device ID в вайт-листе"
-    end
-    
-    -- Проверка по инжектору
-    if injectorName and whitelist.injectors[injectorName] then
-        Logger:log("WHITELIST_CHECK_PASS_INJECTOR", {injector = injectorName})
-        return true, "Инжектор в вайт-листе"
-    end
-    
-    -- Проверка полных комбинаций
-    for _, entry in ipairs(whitelist.combos) do
-        local injectorMatch = not entry.injector or entry.injector:lower() == injectorLower
-        local deviceMatch = not entry.device or entry.device == deviceId
-        local userMatch = not entry.user or entry.user == userIdStr
+    -- Проверка каждой записи
+    for _, entry in ipairs(whitelist) do
+        if entry.type == "all" then
+            print("[Whitelist]   Found: ALL (wildcard)")
+            return true, "Все пользователи разрешены"
         
-        if injectorMatch and deviceMatch and userMatch then
-            Logger:log("WHITELIST_CHECK_PASS_COMBO", {
-                injector = entry.injector,
-                device = entry.device,
-                user = entry.user
-            })
-            return true, "Полное совпадение в вайт-листе"
+        elseif entry.type == "user" and entry.userId == userId then
+            print("[Whitelist]   Found: User ID match")
+            return true, "User ID найден в вайт-листе"
+        
+        elseif entry.type == "combo" then
+            local injectorMatch = entry.injector == "*" or entry.injector == injectorName
+            local userMatch = entry.userId == "*" or entry.userId == userId
+            
+            if injectorMatch and userMatch then
+                print("[Whitelist]   Found: Combo match")
+                return true, "Комбинация найдена в вайт-листе"
+            end
         end
     end
-    
-    Logger:log("WHITELIST_CHECK_FAIL", {
-        reason = "Не найден в вайт-листе"
-    })
     
     return false, "Не найден в вайт-листе"
 end
 
--- ===== ФЕЙК КИК =====
-local function createFakeKick(message)
-    Logger:log("CREATING_FAKE_KICK", {message = message})
-    
-    -- Удаляем старый GUI если есть
-    pcall(function()
-        local gui = game.Players.LocalPlayer.PlayerGui:FindFirstChild("FakeKickGui")
-        if gui then gui:Destroy() end
-    end)
-    
-    -- Создаем новый GUI
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "FakeKickGui"
-    gui.ResetOnSpawn = false
-    
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    frame.BorderSizePixel = 0
-    frame.Parent = gui
-    
-    local messageLabel = Instance.new("TextLabel")
-    messageLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
-    messageLabel.Position = UDim2.new(0.1, 0, 0.35, 0)
-    messageLabel.BackgroundTransparency = 1
-    messageLabel.Text = message or CONFIG.KickMessage
-    messageLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-    messageLabel.TextSize = 24
-    messageLabel.Font = Enum.Font.SourceSansBold
-    messageLabel.TextWrapped = true
-    messageLabel.Parent = frame
-    
-    local errorLabel = Instance.new("TextLabel")
-    errorLabel.Size = UDim2.new(0.8, 0, 0.2, 0)
-    errorLabel.Position = UDim2.new(0.1, 0, 0.7, 0)
-    errorLabel.BackgroundTransparency = 1
-    errorLabel.Text = "Error Code: 267\nPlease try again later"
-    errorLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    errorLabel.TextSize = 16
-    errorLabel.Font = Enum.Font.SourceSans
-    errorLabel.TextWrapped = true
-    errorLabel.Parent = frame
-    
-    gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    
-    -- Эффект появления
-    frame.BackgroundTransparency = 1
-    for i = 1, 20 do
-        frame.BackgroundTransparency = frame.BackgroundTransparency - 0.05
-        wait(0.01)
-    end
-    
-    -- Ждем 3 секунды
-    wait(3)
-    
-    -- Симуляция краша через бесконечный цикл
-    while true do
-        wait(1)
-    end
-end
-
 -- ===== ЗАГРУЗКА ОСНОВНОГО СКРИПТА =====
 local function loadMainScript()
-    Logger:log("LOADING_MAIN_SCRIPT", {url = CONFIG.MainScriptURL})
+    print("[Whitelist] Loading main script from: " .. CONFIG.MainScriptURL)
     
     local success, scriptContent = pcall(function()
         return game:HttpGet(CONFIG.MainScriptURL, true)
     end)
     
     if not success then
-        Logger:log("MAIN_SCRIPT_LOAD_ERROR", {error = scriptContent})
-        createFakeKick("Ошибка загрузки скрипта")
+        print("[Whitelist] ERROR: Failed to load main script")
+        createFakeKick("Ошибка загрузки основного скрипта")
         return false
     end
     
-    Logger:log("MAIN_SCRIPT_LOADED", {size = #scriptContent})
+    -- Проверяем, что скрипт не пустой
+    if #scriptContent < 10 then
+        print("[Whitelist] ERROR: Main script is empty or too short")
+        createFakeKick("Основной скрипт поврежден")
+        return false
+    end
     
-    local success2, error = pcall(function()
+    -- Выполняем скрипт
+    local success2, errorMsg = pcall(function()
         loadstring(scriptContent)()
     end)
     
     if not success2 then
-        Logger:log("MAIN_SCRIPT_EXECUTE_ERROR", {error = error})
+        print("[Whitelist] ERROR: Failed to execute main script: " .. tostring(errorMsg))
         createFakeKick("Ошибка выполнения скрипта")
         return false
     end
     
-    Logger:log("MAIN_SCRIPT_EXECUTED", {})
+    print("[Whitelist] Main script loaded successfully")
     return true
 end
 
 -- ===== ОСНОВНАЯ ФУНКЦИЯ =====
 local function main()
-    Logger:log("SYSTEM_START", {})
+    print("")
+    print("══════════════════════════════════════════════════")
+    print("           WHITELIST SYSTEM STARTING             ")
+    print("══════════════════════════════════════════════════")
     
-    -- Ждем загрузки игры и игрока
+    -- Ждем загрузки игры
     if not game:IsLoaded() then
         game.Loaded:Wait()
     end
     
-    if not game.Players.LocalPlayer then
-        game.Players.PlayerAdded:Wait()
+    -- Ждем появления игрока
+    while not game.Players.LocalPlayer do
+        wait(0.1)
     end
     
-    Logger:log("PLAYER_LOADED", {
-        name = game.Players.LocalPlayer.Name,
-        userId = game.Players.LocalPlayer.UserId
-    })
+    print("[Whitelist] Player: " .. game.Players.LocalPlayer.Name)
+    print("[Whitelist] User ID: " .. game.Players.LocalPlayer.UserId)
     
     -- Обнаруживаем инжектор
-    local injectorInfo = InjectorDetector:detect()
-    
-    -- Получаем данные игрока
-    local userId = game.Players.LocalPlayer.UserId
-    local deviceId = injectorInfo.deviceId
-    local injectorName = injectorInfo.name
+    local injectorInfo = detectInjector()
     
     -- Проверяем вайт-лист
-    local isWhitelisted, reason = WhitelistChecker:check(userId, deviceId, injectorName)
+    local isWhitelisted, reason = checkWhitelist(injectorInfo)
+    
+    print("[Whitelist] Whitelist check result: " .. tostring(isWhitelisted))
+    print("[Whitelist] Reason: " .. tostring(reason))
     
     if isWhitelisted then
-        Logger:log("ACCESS_GRANTED", {reason = reason})
-        
-        -- Загружаем основной скрипт
-        local success = loadMainScript()
-        if not success then
-            createFakeKick("Ошибка загрузки основного скрипта")
-        end
+        print("[Whitelist] Access GRANTED. Loading main script...")
+        loadMainScript()
     else
-        Logger:log("ACCESS_DENIED", {reason = reason})
-        
-        -- Кикаем игрока
+        print("[Whitelist] Access DENIED. Kicking player...")
         createFakeKick(CONFIG.KickMessage)
     end
+    
+    print("══════════════════════════════════════════════════")
+    print("")
 end
 
 -- ===== ЗАПУСК СИСТЕМЫ =====
 -- Запускаем с обработкой ошибок
-local success, error = pcall(main)
+local success, errorMsg = pcall(main)
 
 if not success then
-    print("[Whitelist System] Critical Error: " .. tostring(error))
-    print("[Whitelist System] Creating fake kick...")
+    print("[Whitelist] CRITICAL ERROR: " .. tostring(errorMsg))
+    print("[Whitelist] Creating emergency kick...")
     
     -- При критической ошибке тоже кикаем
     pcall(function()
-        createFakeKick("Системная ошибка")
+        createFakeKick("Системная ошибка: " .. tostring(errorMsg))
     end)
 end
