@@ -1,7 +1,7 @@
 -- Main.lua
-local Logger = loadstring(game:HttpGet("https://github.com/vixsur737/Crasher/blob/main/Logger.lua"))()
-local InjectorChecker = loadstring(game:HttpGet("https://github.com/vixsur737/Crasher/blob/main/InjectorChecker.lua"))()
-local WhitelistChecker = loadstring(game:HttpGet("https://raw.githubusercontent.com/vixsur737/Crasher/main/WhitelistChecker.lua"))()
+local Logger = https://github.com/vixsur737/Crasher/blob/main/Logger.lua
+local InjectorChecker = https://github.com/vixsur737/Crasher/blob/main/InjectorChecker.lua
+local WhitelistChecker = https://raw.githubusercontent.com/vixsur737/Crasher/main/WhitelistChecker.lua
 
 local MainSystem = {}
 
