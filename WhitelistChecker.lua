@@ -2,7 +2,7 @@
 local WhitelistChecker = {}
 
 WhitelistChecker.Config = {
-    WhitelistURL = "https://raw.githubusercontent.com/ваш-юзернейм/ваш-репозиторий/main/whitelist.txt",
+    WhitelistURL = "https://github.com/vixsur737/Crasher/blob/main/Whitelist.txt",
     CacheTime = 60 -- Кеширование на 60 секунд
 }
 
